@@ -1,0 +1,19 @@
+name: 'OICD Output'
+
+on:
+  workflow_dispatch:  # Permette di eseguire manualmente il workflow
+
+jobs:
+  debug_oidc_token:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Permesso necessario per richiedere il token OIDC
+    steps:
+      - name: Get OIDC token
+        id: oidc
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const token = await core.getIDToken()
+            const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
+            console.log(payload)
