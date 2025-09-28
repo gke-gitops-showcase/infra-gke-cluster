@@ -85,7 +85,7 @@ jobs:
         terraform apply -auto-approve
 
         echo "--- Installing GKE Gcloud Auth Plugin ---"
-        gcloud components install gke-gcloud-auth-plugin --quiet
+        sudo apt-get install google-cloud-cli-gke-gcloud-auth-plugin
         
         echo "--- Getting GKE Credentials ---"
         gcloud container clusters get-credentials $(terraform output -raw cluster_name) --region ${{ secrets.GCP_REGION }}
