@@ -1,19 +1,106 @@
-name: 'OICD Output'
+# .github/workflows/main.yml
+name: 'GKE Cluster Infrastructure'
 
 on:
-  workflow_dispatch:  # Permette di eseguire manualmente il workflow
+  # Trigger on pushes to the main branch
+  push:
+    branches:
+      - main
+  # Trigger on pull requests targeting the main branch
+  pull_request:
+    branches:
+      - main
+  # Allow manual triggering from the GitHub UI
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform: apply or destroy'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+        - apply
+        - destroy
+
+# Permissions required for OIDC authentication with GCP
+permissions:
+  contents: 'read'
+  id-token: 'write'
 
 jobs:
-  debug_oidc_token:
+  terraform:
+    name: 'Terraform Plan/Apply/Destroy'
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write # Permesso necessario per richiedere il token OIDC
+
     steps:
-      - name: Get OIDC token
-        id: oidc
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const token = await core.getIDToken()
-            const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
-            console.log(payload)
+    # 1. Checkout the repository code
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    # 2. Authenticate to Google Cloud using Workload Identity Federation
+    - id: 'auth'
+      name: 'Authenticate to Google Cloud'
+      uses: 'google-github-actions/auth@v1'
+      with:
+        workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+        service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+    # 3. Setup Terraform CLI
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_wrapper: false # We'll run commands directly
+
+    # 4. Terraform Init
+    # Initializes the Terraform working directory
+    - name: Terraform Init
+      id: init
+      run: terraform -chdir=./terraform init
+      env:
+        # Pass the GCP project ID to Terraform as an environment variable
+        TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+    # 5. Terraform Validate
+    # Runs only for push and pull_request events to check syntax
+    - name: Terraform Validate
+      id: validate
+      if: github.event_name == 'push' || github.event_name == 'pull_request'
+      run: terraform -chdir=./terraform validate
+
+    # 6. Terraform Plan
+    # Runs only for pull requests to show a preview of changes
+    - name: Terraform Plan
+      id: plan
+      if: github.event_name == 'pull_request'
+      run: terraform -chdir=./terraform plan -no-color
+      continue-on-error: true
+
+    # 7. Terraform Apply (Manual Trigger)
+    # Creates/updates infrastructure and bootstraps Argo CD
+    - name: Terraform Apply
+      id: apply
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'
+      run: |
+        cd terraform
+        terraform apply -auto-approve
+
+        echo "--- Getting GKE Credentials ---"
+        gcloud container clusters get-credentials $(terraform output -raw cluster_name) --region ${{ secrets.GCP_REGION }}
+
+        echo "--- Installing Argo CD ---"
+        kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+        kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+        echo "--- Applying Root App Manifest ---"
+        GITOPS_REPO=$(terraform output -raw gitops_repo_url)
+        # Use a different delimiter for sed, as the URL contains slashes
+        sed -i "s|__GITOPS_REPO_URL__|$GITOPS_REPO|" ../bootstrap/root-app.yaml
+        cat ../bootstrap/root-app.yaml
+        kubectl apply -f ../bootstrap/root-app.yaml
+
+    # 8. Terraform Destroy (Manual Trigger)
+    # Tears down all infrastructure
+    - name: Terraform Destroy
+      id: destroy
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+      run: terraform -chdir=./terraform destroy -auto-approve

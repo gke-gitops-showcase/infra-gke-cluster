@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  # Allows this root app to manage its own deletetion
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    # This is the Url of the app-of-apps repo
+    repoURL: __GITOPS_REPO_URL__ # Placeholder will be replaced by the pipeline
+    targetRevision: HEAD
+    path: . # Apps are defined relative to the root app in the repo
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true # Allows deletion of resources no longer defined in Git
+      selfHeal: true # Allows auto-syncing of out-of-sync apps 
+    syncOptions:
+      - CreateNamespace=true # Creates target namespace if it doesn't exist
