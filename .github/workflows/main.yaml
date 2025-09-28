@@ -99,7 +99,6 @@ jobs:
         kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
         echo "--- Applying Root App Manifest ---"
-        GITOPS_REPO=$(terraform output -raw gitops_repo_url)
         # Use a different delimiter for sed, as the URL contains slashes
         sed -i "s|__GITOPS_REPO_URL__|$GITOPS_REPO|" ../bootstrap/root-app.yaml
         cat ../bootstrap/root-app.yaml

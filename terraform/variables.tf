@@ -24,9 +24,3 @@ variable "artifact_registry_repo_name" {
   default     = "app-images"
 }
 
-//Argo CD Root App Settings
-variable "gitops_repo_url" {
-  description = "The URL of the 'app-of-apps' repository."
-  type        = string
-  default     = "https://gitlab.com/gke-gitops-showcase/argocd-app-of-apps.git"
-}
