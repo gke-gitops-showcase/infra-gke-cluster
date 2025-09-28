@@ -48,6 +48,12 @@ jobs:
         workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
         service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
+    # Verify authentication (optional)
+    - name: Verify GCP Auth
+      run: |
+        gcloud auth list
+        gcloud config list project
+
     # 3. Setup Terraform CLI
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v2
