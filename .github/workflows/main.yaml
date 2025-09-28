@@ -31,6 +31,9 @@ jobs:
   terraform:
     name: 'Terraform Plan/Apply/Destroy'
     runs-on: ubuntu-latest
+    env:
+      # Pass the GCP project ID to Terraform as an environment variable
+      TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
 
     steps:
     # 1. Checkout the repository code
@@ -56,9 +59,6 @@ jobs:
     - name: Terraform Init
       id: init
       run: terraform -chdir=./terraform init
-      env:
-        # Pass the GCP project ID to Terraform as an environment variable
-        TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
 
     # 5. Terraform Validate
     # Runs only for push and pull_request events to check syntax
