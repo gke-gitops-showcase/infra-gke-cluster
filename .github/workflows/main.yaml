@@ -34,6 +34,7 @@ jobs:
     env:
       # Pass the GCP project ID to Terraform as an environment variable
       TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+      GITOPS_REPO: "${{ vars.GITOPS_REPO }}"
 
     steps:
     # 1. Checkout the repository code
