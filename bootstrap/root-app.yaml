@@ -12,7 +12,7 @@ spec:
     # This is the Url of the app-of-apps repo
     repoURL: __GITOPS_REPO_URL__ # Placeholder will be replaced by the pipeline
     targetRevision: HEAD
-    path: . # Apps are defined relative to the root app in the repo
+    path: applications
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
