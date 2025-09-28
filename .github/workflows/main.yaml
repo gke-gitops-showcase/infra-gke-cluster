@@ -75,11 +75,6 @@ jobs:
       run: terraform -chdir=./terraform plan -no-color
       continue-on-error: true
       
-    - name: Install gke-gcloud-auth-plugin
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
-
     # 7. Terraform Apply (Manual Trigger)
     # Creates/updates infrastructure and bootstraps Argo CD
     - name: Terraform Apply
@@ -89,6 +84,9 @@ jobs:
         cd terraform
         terraform apply -auto-approve
 
+        echo "--- Installing GKE Gcloud Auth Plugin ---"
+        gcloud components install gke-gcloud-auth-plugin --quiet
+        
         echo "--- Getting GKE Credentials ---"
         gcloud container clusters get-credentials $(terraform output -raw cluster_name) --region ${{ secrets.GCP_REGION }}
 
